@@ -25,17 +25,19 @@ std::tuple<dai::Pipeline, int, int> createPipeline(bool withDepth, bool lrcheck,
     auto xoutRight   = pipeline.create<dai::node::XLinkOut>();
     auto stereo      = pipeline.create<dai::node::StereoDepth>();
     auto xoutDepth   = pipeline.create<dai::node::XLinkOut>();
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
 
     // XLinkOut
     xoutLeft->setStreamName("left");
     xoutRight->setStreamName("right");
-
     if (withDepth) {
         xoutDepth->setStreamName("depth");
     }
     else {
         xoutDepth->setStreamName("disparity");
     }
+    xoutRgb->setStreamName("video");
 
     int width, height;
     if(resolution == "720p"){
@@ -64,6 +66,9 @@ std::tuple<dai::Pipeline, int, int> createPipeline(bool withDepth, bool lrcheck,
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoRight->setResolution(monoResolution);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    
+    monoLeft->out.link(xoutLeft->input);
+    monoRight->out.link(xoutRight->input);
 
     // StereoDepth
     stereo->initialConfig.setConfidenceThreshold(confidence);
@@ -72,6 +77,11 @@ std::tuple<dai::Pipeline, int, int> createPipeline(bool withDepth, bool lrcheck,
     stereo->setLeftRightCheck(lrcheck);
     stereo->setExtendedDisparity(extended);
     stereo->setSubpixel(subpixel);
+
+    // CamRgb
+    camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    camRgb->setInterleaved(false);
 
     // Link plugins CAM -> STEREO -> XLINK
     monoLeft->out.link(stereo->left);
@@ -86,6 +96,9 @@ std::tuple<dai::Pipeline, int, int> createPipeline(bool withDepth, bool lrcheck,
     else{
         stereo->disparity.link(xoutDepth->input);
     }
+
+    // Link plugins CAM -> XLINK
+    camRgb->video.link(xoutRgb->input);
 
     return std::make_tuple(pipeline, width, height);
 }
@@ -135,10 +148,11 @@ int main(int argc, char** argv){
     auto rightQueue = device.getOutputQueue("right", 30, false);
     std::shared_ptr<dai::DataOutputQueue> stereoQueue;
     if (enableDepth) {
-        stereoQueue = device.getOutputQueue("depth", 30, false);
+        stereoQueue = device.getOutputQueue("depth", 4, false);
     }else{
-        stereoQueue = device.getOutputQueue("disparity", 30, false);
+        stereoQueue = device.getOutputQueue("disparity", 4, false);
     }
+    auto previewQueue = device.getOutputQueue("video", 30, false);
 
     auto calibrationHandler = device.readCalibration();
 
@@ -179,7 +193,7 @@ int main(int argc, char** argv){
 
     rightPublish.addPublisherCallback();
 
-     if(mode == "depth"){
+    if(mode == "depth"){
         dai::rosBridge::BridgePublisher<sensor_msgs::Image, dai::ImgFrame> depthPublish(stereoQueue,
                                                                                      pnh, 
                                                                                      std::string("stereo/depth"),
@@ -192,7 +206,6 @@ int main(int argc, char** argv){
                                                                                      rightCameraInfo,
                                                                                      "stereo");
         depthPublish.addPublisherCallback();
-        ros::spin();
     }
     else{
         dai::rosBridge::DisparityConverter dispConverter(tfPrefix + "_right_camera_optical_frame", 880, 7.5, 20, 2000);
@@ -207,7 +220,24 @@ int main(int argc, char** argv){
                                                                                      rightCameraInfo,
                                                                                      "stereo");
         dispPublish.addPublisherCallback();
-        ros::spin();
     }
+
+    dai::rosBridge::ImageConverter rgbConverter(tfPrefix + "_rgb_camera_optical_frame", true);
+    dai::rosBridge::ImageConverter depthConverter(tfPrefix + "_right_camera_optical_frame", true);
+    auto rgbCameraInfo = depthConverter.calibrationToCameraInfo(calibrationHandler, dai::CameraBoardSocket::RGB, 1280, 720); 
+    dai::rosBridge::BridgePublisher<sensor_msgs::Image, dai::ImgFrame> rgbPublish(previewQueue,
+                                                                                    pnh, 
+                                                                                    std::string("color/image"),
+                                                                                    std::bind(&dai::rosBridge::ImageConverter::toRosMsg, 
+                                                                                    &rgbConverter, // since the converter has the same frame name
+                                                                                                    // and image type is also same we can reuse it
+                                                                                    std::placeholders::_1, 
+                                                                                    std::placeholders::_2) , 
+                                                                                    30,
+                                                                                    rgbCameraInfo,
+                                                                                    "color");
+
+    rgbPublish.addPublisherCallback();
+    ros::spin();
     return 0;
 }
