@@ -193,34 +193,46 @@ int main(int argc, char** argv){
 
     rightPublish.addPublisherCallback();
 
-    if(mode == "depth"){
-        dai::rosBridge::BridgePublisher<sensor_msgs::Image, dai::ImgFrame> depthPublish(stereoQueue,
-                                                                                     pnh, 
-                                                                                     std::string("stereo/depth"),
-                                                                                     std::bind(&dai::rosBridge::ImageConverter::toRosMsg, 
-                                                                                     &rightconverter, // since the converter has the same frame name
-                                                                                                      // and image type is also same we can reuse it
-                                                                                     std::placeholders::_1, 
-                                                                                     std::placeholders::_2) , 
-                                                                                     30,
-                                                                                     rightCameraInfo,
-                                                                                     "stereo");
-        depthPublish.addPublisherCallback();
-    }
-    else{
-        dai::rosBridge::DisparityConverter dispConverter(tfPrefix + "_right_camera_optical_frame", 880, 7.5, 20, 2000);
-        dai::rosBridge::BridgePublisher<stereo_msgs::DisparityImage, dai::ImgFrame> dispPublish(stereoQueue,
-                                                                                     pnh, 
-                                                                                     std::string("stereo/disparity"),
-                                                                                     std::bind(&dai::rosBridge::DisparityConverter::toRosMsg, 
-                                                                                     &dispConverter, 
-                                                                                     std::placeholders::_1, 
-                                                                                     std::placeholders::_2) , 
-                                                                                     30,
-                                                                                     rightCameraInfo,
-                                                                                     "stereo");
-        dispPublish.addPublisherCallback();
-    }
+    dai::rosBridge::BridgePublisher<sensor_msgs::Image, dai::ImgFrame> depthPublish(stereoQueue,
+                                                                                 pnh, 
+                                                                                 std::string("stereo/depth"),
+                                                                                 std::bind(&dai::rosBridge::ImageConverter::toRosMsg, 
+                                                                                 &rightconverter, // since the converter has the same frame name
+                                                                                                  // and image type is also same we can reuse it
+                                                                                 std::placeholders::_1, 
+                                                                                 std::placeholders::_2) , 
+                                                                                 30,
+                                                                                 rightCameraInfo,
+                                                                                 "stereo");
+    depthPublish.addPublisherCallback();
+    // if(mode == "depth"){
+    //     dai::rosBridge::BridgePublisher<sensor_msgs::Image, dai::ImgFrame> depthPublish(stereoQueue,
+    //                                                                                  pnh, 
+    //                                                                                  std::string("stereo/depth"),
+    //                                                                                  std::bind(&dai::rosBridge::ImageConverter::toRosMsg, 
+    //                                                                                  &rightconverter, // since the converter has the same frame name
+    //                                                                                                   // and image type is also same we can reuse it
+    //                                                                                  std::placeholders::_1, 
+    //                                                                                  std::placeholders::_2) , 
+    //                                                                                  30,
+    //                                                                                  rightCameraInfo,
+    //                                                                                  "stereo");
+    //     depthPublish.addPublisherCallback();
+    // }
+    // else{
+    //     dai::rosBridge::DisparityConverter dispConverter(tfPrefix + "_right_camera_optical_frame", 880, 7.5, 20, 2000);
+    //     dai::rosBridge::BridgePublisher<stereo_msgs::DisparityImage, dai::ImgFrame> dispPublish(stereoQueue,
+    //                                                                                  pnh, 
+    //                                                                                  std::string("stereo/disparity"),
+    //                                                                                  std::bind(&dai::rosBridge::DisparityConverter::toRosMsg, 
+    //                                                                                  &dispConverter, 
+    //                                                                                  std::placeholders::_1, 
+    //                                                                                  std::placeholders::_2) , 
+    //                                                                                  30,
+    //                                                                                  rightCameraInfo,
+    //                                                                                  "stereo");
+    //     dispPublish.addPublisherCallback();
+    // }
 
     dai::rosBridge::ImageConverter rgbConverter(tfPrefix + "_rgb_camera_optical_frame", true);
     dai::rosBridge::ImageConverter depthConverter(tfPrefix + "_right_camera_optical_frame", true);
