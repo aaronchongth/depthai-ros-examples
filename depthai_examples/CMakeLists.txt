@@ -197,6 +197,7 @@ elseif( CATKIN_DEVEL_PREFIX OR CATKIN_BUILD_BINARY_PACKAGE )
 
   dai_add_node(stereo_node ros1_src/stereo_publisher.cpp)
   dai_add_node(yolov4_spatial_node ros1_src/yolov4_spatial_publisher.cpp)
+  dai_add_node(oak_d_lite_node ros1_src/oak_d_lite.cpp)
 
 
   target_compile_definitions(mobilenet_node PRIVATE BLOB_PATH="${mobilenet_blob}")
@@ -214,6 +215,7 @@ elseif( CATKIN_DEVEL_PREFIX OR CATKIN_BUILD_BINARY_PACKAGE )
           stereo_inertial_node
           stereo_node
           yolov4_spatial_node
+          oak_d_lite_node
           RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
   )
 
